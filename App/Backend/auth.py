@@ -14,7 +14,6 @@ router = APIRouter()
 class AuthRequest(BaseModel):
     username: str
     password: str
-    role: str = "Employee"
 
 def get_db():
     return mysql.connector.connect(
@@ -42,8 +41,8 @@ def register(user: AuthRequest):
     
     try:
         cursor.execute(
-            "INSERT INTO users (username, password_hash, salt, role) VALUES (%s, %s, %s, %s)",
-            (user.username, hashed_pw, salt, user.role)
+            "INSERT INTO users (username, password_hash, salt, role) VALUES (%s, %s, %s,%s)",
+            (user.username, hashed_pw, salt, "Employee")
         )
         db.commit()
     except mysql.connector.IntegrityError:
