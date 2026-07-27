@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 db = mysql.connector.connect(
-    host="localhost",
-    user="root",
+    host=os.getenv("MYSQL_HOST", "localhost"),
+    user=os.getenv("MYSQL_USER", "root"),
     password=os.getenv("MYSQL_PASSWORD", "")
 )
 
