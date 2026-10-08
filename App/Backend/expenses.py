@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from auth import verify_session
+from auth import verify_session, get_db
 from pydantic import BaseModel, Field
-import mysql.connector
-import os
-from datetime import datetime, timedelta
+from typing import Optional
+from datetime import datetime
 from dotenv import load_dotenv
+import os
 
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv()
 
 router = APIRouter()
@@ -19,9 +20,9 @@ class Expense(BaseModel):
     status: str = "submitted"
     user_id: int
     username: str
-    image_url: str = None
-    notes: str = None
-    rejection_reason: str = None
+    image_url: Optional[str] = None
+    notes: Optional[str] = None
+    rejection_reason: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -31,8 +32,8 @@ class ExpenseCreate(BaseModel):
     amount: float = Field(..., gt=0)
     currency: str = "INR"
     category: str  
-    image_url: str = None
-    notes: str = None
+    image_url: Optional[str] = None
+    notes: Optional[str] = None
 
 class SessionRequest(BaseModel):
     session_id: str
@@ -40,14 +41,6 @@ class SessionRequest(BaseModel):
 class RejectAction(BaseModel):
     session_id: str
     rejection_reason: str = Field(..., min_length=5)
-
-def get_db():
-    return mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST", "localhost"),
-        user=os.getenv("MYSQL_USER", "root"),
-        password=os.getenv("MYSQL_PASSWORD", ""),
-        database="ledger"
-    )
 
 @router.post("/expenses")
 def create_expense(expense: ExpenseCreate):
@@ -60,25 +53,26 @@ def create_expense(expense: ExpenseCreate):
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    
-    cursor.execute("""
-        INSERT INTO expenses 
-        (title, amount, currency, category, status, user_id, image_url, notes)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (
-        expense.title,
-        expense.amount,
-        expense.currency.upper(),
-        expense.category,
-        "submitted",
-        user["id"],
-        expense.image_url,
-        expense.notes
-    ))
-    
-    expense_id = cursor.lastrowid
-    db.commit()
-    db.close()
+    try:
+        cursor.execute("""
+            INSERT INTO expenses 
+            (title, amount, currency, category, status, user_id, image_url, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            expense.title,
+            expense.amount,
+            expense.currency.upper(),
+            expense.category,
+            "submitted",
+            user["id"],
+            expense.image_url,
+            expense.notes
+        ))
+        expense_id = cursor.lastrowid
+        db.commit()
+    finally:
+        cursor.close()
+        db.close()
     
     return {"message": "Expense submitted successfully", "expense_id": expense_id}
 
@@ -93,23 +87,23 @@ def approve_expense(expense_id: int, action: SessionRequest):
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
-    expense = cursor.fetchone()
+    try:
+        cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
+        expense = cursor.fetchone()
 
-    if not expense:
-        db.close()
-        raise HTTPException(status_code=404, detail="Expense not found")
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
 
-    if expense['user_id'] == user['id']:
-        db.close()
-        raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
-    if expense['status'] != 'submitted':
-        db.close()
-        raise HTTPException(status_code=422, detail="Expense already processed")
+        if expense['user_id'] == user['id']:
+            raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
+        if expense['status'] != 'submitted':
+            raise HTTPException(status_code=422, detail="Expense already processed")
 
-    cursor.execute("UPDATE expenses SET status = 'approved' WHERE id = %s", (expense_id,))
-    db.commit()
-    db.close()
+        cursor.execute("UPDATE expenses SET status = 'approved' WHERE id = %s", (expense_id,))
+        db.commit()
+    finally:
+        cursor.close()
+        db.close()
 
     return {"message": f"Expense {expense_id} approved"}
 
@@ -124,26 +118,26 @@ def reject_expense(expense_id: int, action: RejectAction):
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
-    expense = cursor.fetchone()
+    try:
+        cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
+        expense = cursor.fetchone()
 
-    if not expense:
-        db.close()
-        raise HTTPException(status_code=404, detail="Expense not found")
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
 
-    if expense['user_id'] == user['id']:
-        db.close()
-        raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
-    if expense['status'] != 'submitted':
-        db.close()
-        raise HTTPException(status_code=422, detail="Expense already processed")
+        if expense['user_id'] == user['id']:
+            raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
+        if expense['status'] != 'submitted':
+            raise HTTPException(status_code=422, detail="Expense already processed")
 
-    cursor.execute(
-        "UPDATE expenses SET status = 'rejected', rejection_reason = %s WHERE id = %s", 
-        (action.rejection_reason, expense_id)
-    )
-    db.commit()
-    db.close()
+        cursor.execute(
+            "UPDATE expenses SET status = 'rejected', rejection_reason = %s WHERE id = %s", 
+            (action.rejection_reason, expense_id)
+        )
+        db.commit()
+    finally:
+        cursor.close()
+        db.close()
 
     return {"message": f"Expense {expense_id} rejected"}
 
@@ -155,25 +149,25 @@ def reopen_expense(expense_id: int, action: SessionRequest):
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
-    expense = cursor.fetchone()
+    try:
+        cursor.execute("SELECT * FROM expenses WHERE id = %s", (expense_id,))
+        expense = cursor.fetchone()
 
-    if not expense:
-        db.close()
-        raise HTTPException(status_code=404, detail="Expense not found")
+        if not expense:
+            raise HTTPException(status_code=404, detail="Expense not found")
 
-    if expense['user_id'] != user['id']:
-        db.close()
-        raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
-    if expense['status'] != 'rejected':
-        db.close()
-        raise HTTPException(status_code=422, detail="Expense already processed")
+        if expense['user_id'] != user['id']:
+            raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
+        if expense['status'] != 'rejected':
+            raise HTTPException(status_code=422, detail="Expense already processed")
 
-    cursor.execute(
-        "UPDATE expenses SET status = 'submitted', rejection_reason = NULL WHERE id = %s", 
-        (expense_id,)
-    )
-    db.commit()
-    db.close()
+        cursor.execute(
+            "UPDATE expenses SET status = 'submitted', rejection_reason = NULL WHERE id = %s", 
+            (expense_id,)
+        )
+        db.commit()
+    finally:
+        cursor.close()
+        db.close()
 
     return {"message": f"Expense {expense_id} reopened and resubmitted"}

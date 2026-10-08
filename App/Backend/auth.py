@@ -1,27 +1,54 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import mysql.connector
+from mysql.connector import pooling
 import hashlib
 import os
 import secrets
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv()
 
 router = APIRouter()
+
+# Connection pool for high efficiency and reusable connections
+_connection_pool = None
+
+def get_connection_pool():
+    global _connection_pool
+    if _connection_pool is None:
+        _connection_pool = pooling.MySQLConnectionPool(
+            pool_name="ledger_pool",
+            pool_size=10,
+            pool_reset_session=True,
+            host=os.getenv("MYSQL_HOST", "localhost"),
+            user=os.getenv("MYSQL_USER", "root"),
+            password=os.getenv("MYSQL_PASSWORD", ""),
+            database="ledger"
+        )
+    return _connection_pool
+
+def get_db():
+    try:
+        pool = get_connection_pool()
+        return pool.get_connection()
+    except Exception:
+        # Fallback to direct connection if pooling is not initialized
+        return mysql.connector.connect(
+            host=os.getenv("MYSQL_HOST", "localhost"),
+            user=os.getenv("MYSQL_USER", "root"),
+            password=os.getenv("MYSQL_PASSWORD", ""),
+            database="ledger"
+        )
 
 class AuthRequest(BaseModel):
     username: str
     password: str
 
-def get_db():
-    return mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST", "localhost"),
-        user=os.getenv("MYSQL_USER", "root"),
-        password=os.getenv("MYSQL_PASSWORD", ""),
-        database="ledger"
-    )
+class SessionRequest(BaseModel):
+    session_id: str
 
 def hash_password(password: str, salt: bytes = None):
     if salt is None:
@@ -41,15 +68,16 @@ def register(user: AuthRequest):
     
     try:
         cursor.execute(
-            "INSERT INTO users (username, password_hash, salt, role) VALUES (%s, %s, %s,%s)",
+            "INSERT INTO users (username, password_hash, salt, role) VALUES (%s, %s, %s, %s)",
             (user.username, hashed_pw, salt, "Employee")
         )
         db.commit()
     except mysql.connector.IntegrityError:
-        db.close()
         raise HTTPException(status_code=400, detail="Username already exists")
+    finally:
+        cursor.close()
+        db.close()
         
-    db.close()
     return {"message": "User registered successfully"}
 
 @router.post("/login")
@@ -61,6 +89,7 @@ def login(user: AuthRequest):
     db_user = cursor.fetchone()
     
     if not db_user or not verify_password(db_user['password_hash'], db_user['salt'], user.password):
+        cursor.close()
         db.close()
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
@@ -72,6 +101,7 @@ def login(user: AuthRequest):
         (session_id, db_user['id'], expires_at)
     )
     db.commit()
+    cursor.close()
     db.close()
     
     return {
@@ -80,8 +110,21 @@ def login(user: AuthRequest):
         "role": db_user['role']
     }
 
-def verify_session(session_id: str):
+@router.post("/logout")
+def logout(action: SessionRequest):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM sessions WHERE session_id = %s", (action.session_id,))
+    deleted = cursor.rowcount
+    db.commit()
+    cursor.close()
+    db.close()
+    
+    if deleted == 0:
+        return {"message": "Session not found or already logged out"}
+    return {"message": "Logged out successfully"}
 
+def verify_session(session_id: str):
     if not session_id:
         return False
 
@@ -101,8 +144,24 @@ def verify_session(session_id: str):
         if user:
             cursor.execute("DELETE FROM sessions WHERE session_id = %s", (session_id,))
             db.commit()
+        cursor.close()
         db.close()
         return False
         
+    cursor.close()
     db.close()
     return user
+
+def cleanup_expired_sessions() -> int:
+    """Deletes all expired sessions from the database."""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("DELETE FROM sessions WHERE expires_at < NOW()")
+        deleted_count = cursor.rowcount
+        db.commit()
+        cursor.close()
+        db.close()
+        return deleted_count
+    except Exception:
+        return 0

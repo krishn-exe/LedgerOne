@@ -1,22 +1,27 @@
 # LedgerOne 
 
-LedgerOne is an expense management software designed for organizations to track, monitor, and control corporate spending. It automates expense tracking, simplifies approval workflows.
-*currently supports backend API requests only*
+LedgerOne is an expense management platform designed for organizations to track, monitor, and control corporate spending. It automates expense tracking and simplifies approval workflows with both a REST API and a lightweight, reactive web frontend.
 
 ## Tech stack
 
 - **Language:** Python 3.14
-- **Frameworks:** FastAPI
-- **Libraries:** Uvicorn, Pydantic, mysql-connector, hashlib, os, datetime, dotenv, secrets, random
-- **Database** MySQL
-
+- **Backend Framework:** FastAPI, Uvicorn, Starlette
+- **Frontend & Templating:** Jinja2, HTMX (script tag CDN), Pico CSS v2 (CDN)
+- **Database:** MySQL (`mysql-connector-python`)
+- **Libraries:** Pydantic, python-dotenv, python-multipart, hashlib, secrets
 
 ## Features
 
-- **Registration, Login, User Authentication**
-- **Create Expenses, Fetch Expenses**
-- **Approval Workflow**
-- **Role based Authentication**
+- **Interactive Web Interface:** Served directly by FastAPI with zero Node/build steps.
+- **Reactive UI with HTMX:** Partial DOM updates for filtering, submission, approving, and rejecting without full-page reloads.
+- **Semantic, Clean Styling:** Responsive UI powered by Pico CSS.
+- **Secure Cookie-Based Authentication:** `HttpOnly`, `SameSite=Lax` cookies for browser sessions, with automated redirects to `/login` when unauthorized.
+- **Role-Based Access Control (RBAC):** Server-side enforced permissions tailored for `Employee`, `Manager`, and `Finance` roles.
+- **Interactive Dashboard:** Role-tailored expense summary cards (Total Spent, Pending, Approved, Rejected) and recent activity logs.
+- **Expenses Filter & Pagination:** Real-time filtering by status (`submitted`, `approved`, `rejected`) and category (`Meals`, `Travel`, `Software`, `Equipment`, `Other`).
+- **Approval Workflow:** Dedicated approvals queue for managers with inline Approve and Reject (with required reason) actions.
+- **Rejected Expense Resubmission:** Employees can reopen and edit/resubmit their rejected expenses in place.
+- **Full REST API Compatibility:** Existing JSON endpoints remain completely intact and documented in Swagger UI (`/docs`).
 
 ## Setup
 
@@ -26,6 +31,7 @@ LedgerOne is an expense management software designed for organizations to track,
 git clone https://github.com/krishn-exe/LedgerOne.git
 cd LedgerOne
 ```
+
 #### 2. Setup python virtual environment (*optional*)
 
 *Windows*
@@ -33,49 +39,67 @@ cd LedgerOne
 python -m venv .venv
 .venv\Scripts\activate
 ```
-*Mac*
+
+*Mac / Linux*
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-#### 3. Install the external libraries
+#### 3. Install dependencies
 
 ```bash
-pip install fastapi uvicorn pydantic mysql-connector-python python-dotenv
+pip install fastapi uvicorn pydantic mysql-connector-python python-dotenv jinja2 python-multipart
 ```
 
-#### 4. Setup enviroment variables
+#### 4. Setup environment variables
 
-Create a .env inside of the "App" folder, and enter the following data
+Create a `.env` file inside the `App/` folder (or project root) with your database credentials:
+```env
+MYSQL_PASSWORD=YOUR_PASSWORD
+MYSQL_HOST=localhost
+MYSQL_USER=root
 ```
-MYSQL_PASSWORD= YOUR PASSWORD
-MYSQL_HOST= YOUR HOST NAME
-MYSQL_USER= YOU USER NAME
-```
-#### 5. Initialise the database
 
-inside of app/database
+#### 5. Initialize the database
+
+Inside `App/Database` (or from project root):
 ```bash
-python setup.py
+python App/Database/setup.py
 ```
 
-#### 6. Populate the database (*optional*)
+#### 6. Populate demo seed data (*optional*)
 
-inside of app/database
 ```bash
-python populate.py
+python App/Database/populate.py
 ```
+*Demo accounts seeded with password `password123`:*
+- **Employee:** `employee_1` (Submit & view personal expenses)
+- **Manager:** `manager_7` (Review, approve, or reject team expenses)
+- **Finance:** `finance_10` (Audit all expenses and organization reports)
 
-#### 6. Run the Server
+#### 7. Run the Server
 
-Inside of app/backend
 ```bash
-uvicorn main:app
+cd App/Backend
+uvicorn main:app --reload
 ```
 
-## Testing
+## Web UI Pages & URLs
 
-The API utilises the built in **Swagger UI** from FASTAPI for testing and interactive documenting
+Once the server is running (`http://localhost:8000`):
 
-To access this, on a browser navigate to ```http://localhost:8000/docs```
+| URL | Description | Access |
+|---|---|---|
+| [`/login`](http://localhost:8000/login) | Sign in with username & password | Public |
+| [`/register`](http://localhost:8000/register) | Create a new employee account | Public |
+| [`/dashboard`](http://localhost:8000/dashboard) | Role-tailored summary stats & recent expenses | Authenticated |
+| [`/expenses`](http://localhost:8000/expenses) | Filterable expenses list with HTMX partial table updates | Authenticated |
+| [`/expenses/new`](http://localhost:8000/expenses/new) | Create a new expense claim with inline validation | Employee, Manager |
+| [`/approvals`](http://localhost:8000/approvals) | Queue to approve or reject pending claims in-place | Manager only |
+| [`/logout`](http://localhost:8000/logout) | Clears session cookie and redirects to `/login` | Authenticated |
+
+## API Documentation
+
+The REST API utilizes FastAPI's built-in **Swagger UI**:
+Navigate to [`http://localhost:8000/docs`](http://localhost:8000/docs) in your browser.

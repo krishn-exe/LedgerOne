@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}New Expense - LedgerOne{% endblock %}
+
+{% block content %}
+<div style="max-width: 640px; margin: 1rem auto;">
+    <article>
+        <header>
+            <h2 style="margin-bottom: 0.25rem;">Submit New Expense</h2>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem;">Fill in the details below to submit an expense for approval</p>
+        </header>
+
+        {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        <form action="/expenses/new" method="POST">
+            <label for="title">
+                Expense Title *
+                <input type="text" id="title" name="title" value="{{ form_data.title if form_data else '' }}" placeholder="e.g. Flight to Mumbai, Team Lunch" required maxlength="255" autofocus>
+            </label>
+
+            <div class="grid">
+                <div>
+                    <label for="amount">
+                        Amount *
+                        <input type="number" id="amount" name="amount" value="{{ form_data.amount if form_data else '' }}" step="0.01" min="0.01" placeholder="0.00" required>
+                    </label>
+                </div>
+                <div>
+                    <label for="currency">
+                        Currency
+                        <select id="currency" name="currency">
+                            <option value="INR" {% if form_data and form_data.currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                            <option value="USD" {% if form_data and form_data.currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                            <option value="EUR" {% if form_data and form_data.currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                            <option value="GBP" {% if form_data and form_data.currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <label for="category">
+                Category *
+                <select id="category" name="category" required>
+                    <option value="" disabled {% if not form_data or not form_data.category %}selected{% endif %}>Select category...</option>
+                    <option value="Meals" {% if form_data and form_data.category == 'Meals' %}selected{% endif %}>Meals</option>
+                    <option value="Travel" {% if form_data and form_data.category == 'Travel' %}selected{% endif %}>Travel</option>
+                    <option value="Software" {% if form_data and form_data.category == 'Software' %}selected{% endif %}>Software</option>
+                    <option value="Equipment" {% if form_data and form_data.category == 'Equipment' %}selected{% endif %}>Equipment</option>
+                    <option value="Other" {% if form_data and form_data.category == 'Other' %}selected{% endif %}>Other</option>
+                </select>
+            </label>
+
+            <label for="image_url">
+                Receipt / Image URL (optional)
+                <input type="url" id="image_url" name="image_url" value="{{ form_data.image_url if form_data else '' }}" placeholder="https://example.com/receipt.png">
+            </label>
+
+            <label for="notes">
+                Notes / Justification (optional)
+                <textarea id="notes" name="notes" rows="3" placeholder="Provide extra details for your manager...">{{ form_data.notes if form_data else '' }}</textarea>
+            </label>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
+                <a href="/expenses" role="button" class="outline secondary">Cancel</a>
+                <button type="submit">Submit Expense</button>
+            </div>
+        </form>
+    </article>
+</div>
+{% endblock %}

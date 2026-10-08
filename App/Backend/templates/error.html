@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or "Notice" }} - LedgerOne{% endblock %}
+
+{% block content %}
+<div style="max-width: 580px; margin: 3rem auto; text-align: center;">
+    <article>
+        <header>
+            <h2 style="color: {% if status_code and status_code >= 400 %}var(--pico-color-red-500, #b91c1c){% else %}inherit{% endif %};">
+                {{ title or "Notice" }}
+            </h2>
+        </header>
+
+        <p style="font-size: 1.05rem; margin: 1.5rem 0;">
+            {{ message or "An unexpected issue occurred." }}
+        </p>
+
+        <footer>
+            <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                {% if user %}
+                    <a href="/dashboard" role="button">Go to Dashboard</a>
+                    <a href="/expenses" role="button" class="secondary">View Expenses</a>
+                {% else %}
+                    <a href="/login" role="button">Go to Sign In</a>
+                {% endif %}
+            </div>
+        </footer>
+    </article>
+</div>
+{% endblock %}

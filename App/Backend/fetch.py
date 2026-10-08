@@ -1,32 +1,25 @@
 from fastapi import APIRouter, HTTPException
-from auth import verify_session
+from auth import verify_session, get_db
 from pydantic import BaseModel, Field
-import mysql.connector
-import os
-from datetime import datetime, timedelta
+from typing import Optional
+from datetime import datetime
 from dotenv import load_dotenv
+import os
 
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 load_dotenv()
 
 router = APIRouter()
 
-def get_db():
-    return mysql.connector.connect(
-        host=os.getenv("MYSQL_HOST", "localhost"),
-        user=os.getenv("MYSQL_USER", "root"),
-        password=os.getenv("MYSQL_PASSWORD", ""),
-        database="ledger"
-    )
-
 class FetchExpensesRequest(BaseModel):
     session_id: str
 
-    start_date: str = None
-    end_date: str = None
-    category: str = None
-    status: str = None
-    min_amount: float = None
-    max_amount: float = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
+    min_amount: Optional[float] = None
+    max_amount: Optional[float] = None
     page: int = 1
     limit: int = Field(20, le=100)
     sort_by: str = "created_at"
@@ -47,11 +40,15 @@ def fetch_expenses(req: FetchExpensesRequest):
 
     if req.start_date:
         conditions.append("e.created_at >= %s")
-        parameters.append(req.start_date)
+        parameters.append(req.start_date.strip())
         
     if req.end_date:
+        end_date_val = req.end_date.strip()
+        # When YYYY-MM-DD is provided, expand to end of day so comparison includes entire day
+        if len(end_date_val) == 10 and " " not in end_date_val and "T" not in end_date_val:
+            end_date_val += " 23:59:59"
         conditions.append("e.created_at <= %s")
-        parameters.append(req.end_date)
+        parameters.append(end_date_val)
         
     if req.category:
         conditions.append("e.category = %s")
@@ -75,40 +72,40 @@ def fetch_expenses(req: FetchExpensesRequest):
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
+    try:
+        count_query = f"SELECT COUNT(*) as total FROM expenses e JOIN users u ON e.user_id = u.id {where_clause}"
+        cursor.execute(count_query, parameters)
+        total_records = cursor.fetchone()["total"]
 
-    count_query = f"SELECT COUNT(*) as total FROM expenses e JOIN users u ON e.user_id = u.id {where_clause}"
-    cursor.execute(count_query, parameters)
-    total_records = cursor.fetchone()["total"]
+        valid_sort_columns = {
+            "created_at": "e.created_at",
+            "amount": "e.amount",
+            "status": "e.status",
+            "category": "e.category",
+            "title": "e.title"
+        }
+        sort_col = valid_sort_columns.get(req.sort_by, "e.created_at")
+        sort_dir = "ASC" if req.order.upper() == "ASC" else "DESC"
 
-    valid_sort_columns = {
-        "created_at": "e.created_at",
-        "amount": "e.amount",
-        "status": "e.status",
-        "category": "e.category",
-        "title": "e.title"
-    }
-    sort_col = valid_sort_columns.get(req.sort_by, "e.created_at")
-    sort_dir = "ASC" if req.order.upper() == "ASC" else "DESC"
+        offset = (req.page - 1) * req.limit
+        data_parameters = parameters + [req.limit, offset]
 
-
-    offset = (req.page - 1) * req.limit
-    
-    data_parameters = parameters + [req.limit, offset]
-
-    data_query = f"""
-        SELECT 
-            e.*, 
-            u.username 
-        FROM expenses e 
-        JOIN users u ON e.user_id = u.id 
-        {where_clause} 
-        ORDER BY {sort_col} {sort_dir} 
-        LIMIT %s OFFSET %s
-    """
-    
-    cursor.execute(data_query, data_parameters)
-    expenses_data = cursor.fetchall()
-    db.close()
+        data_query = f"""
+            SELECT 
+                e.*, 
+                u.username 
+            FROM expenses e 
+            JOIN users u ON e.user_id = u.id 
+            {where_clause} 
+            ORDER BY {sort_col} {sort_dir} 
+            LIMIT %s OFFSET %s
+        """
+        
+        cursor.execute(data_query, data_parameters)
+        expenses_data = cursor.fetchall()
+    finally:
+        cursor.close()
+        db.close()
 
     return {
         "total": total_records,

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Approvals Queue - LedgerOne{% endblock %}
+
+{% block content %}
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">Expense Approvals</h2>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem; margin-bottom: 0;">
+                Review, approve, or reject employee expense claims
+            </p>
+        </div>
+        <div>
+            <span class="badge badge-manager">Manager Access</span>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Submitted By</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Notes</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" style="text-align: right;">Decision</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if expenses and expenses|length > 0 %}
+                    {% for exp in expenses %}
+                        {% include "partials/_approval_row.html" %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <h4 style="margin-bottom: 0.5rem;">All caught up!</h4>
+                            <p style="margin-bottom: 0;">There are no pending expenses requiring your review.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 1.5rem; font-size: 0.85rem; color: var(--pico-muted-color);">
+        &bull; <em>Note: As per corporate policy, managers cannot approve their own submitted expenses.</em>
+    </div>
+</div>
+{% endblock %}

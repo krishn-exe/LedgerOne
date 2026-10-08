@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - LedgerOne{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 2rem auto;">
+    <article>
+        <header>
+            <h2 style="margin-bottom: 0.25rem;">Sign In</h2>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem;">Access your LedgerOne expense portal</p>
+        </header>
+
+        {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+        {% endif %}
+
+        {% if message %}
+            <div class="alert alert-success">
+                {{ message }}
+            </div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <label for="username">
+                Username
+                <input type="text" id="username" name="username" value="{{ username or '' }}" placeholder="e.g. employee_1" required autofocus>
+            </label>
+
+            <label for="password">
+                Password
+                <input type="password" id="password" name="password" placeholder="Enter password" required>
+            </label>
+
+            <button type="submit" style="width: 100%; margin-top: 1rem;">Sign In</button>
+        </form>
+
+        <footer style="margin-top: 1.5rem; text-align: center; font-size: 0.88rem;">
+            Don't have an account? <a href="/register">Register here</a>
+        </footer>
+    </article>
+
+    <div style="margin-top: 1.5rem; padding: 1rem; border: 1px dashed var(--pico-muted-border-color); border-radius: var(--pico-border-radius); font-size: 0.82rem; color: var(--pico-muted-color);">
+        <strong>Demo Accounts (password: <code>password123</code>):</strong><br>
+        &bull; <strong>Employee:</strong> <code>employee_1</code> (Create & view own expenses)<br>
+        &bull; <strong>Manager:</strong> <code>manager_7</code> (Approve/reject expenses, view all)<br>
+        &bull; <strong>Finance:</strong> <code>finance_10</code> (View all expenses, audit analytics)
+    </div>
+</div>
+{% endblock %}

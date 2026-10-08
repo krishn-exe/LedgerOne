@@ -30,15 +30,18 @@ roles = (
 
 user_ids = []
 
+import hashlib
+
 for i, role in enumerate(roles):
     username = f"{role.lower()}_{i+1}"
-    dummy_hash = "dummy_hash_12345"
-    dummy_salt = "dummy_salt_abcde"
+    salt = os.urandom(16)
+    pwd_hash = hashlib.pbkdf2_hmac('sha256', 'password123'.encode('utf-8'), salt, 100000).hex()
+    salt_hex = salt.hex()
     
     cursor.execute("""
         INSERT INTO users (username, password_hash, salt, role)
         VALUES (%s, %s, %s, %s)
-    """, (username, dummy_hash, dummy_salt, role))
+    """, (username, pwd_hash, salt_hex, role))
     
     user_ids.append(cursor.lastrowid)
 

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LedgerOne - Expense Management{% endblock %}</title>
+    <!-- Pico CSS via CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <!-- HTMX via CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <style>
+        :root {
+            --pico-font-size: 95%;
+        }
+        nav.container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            margin-bottom: 1.5rem;
+        }
+        .brand-link {
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+        .user-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.6rem;
+            background: var(--pico-card-background-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-radius: 2rem;
+            font-size: 0.85rem;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .badge-employee { background: #e0f2fe; color: #0369a1; }
+        .badge-manager { background: #f3e8ff; color: #7e22ce; }
+        .badge-finance { background: #ccfbf1; color: #0f766e; }
+        
+        .badge-submitted { background: #fef3c7; color: #b45309; }
+        .badge-approved { background: #dcfce7; color: #15803d; }
+        .badge-rejected { background: #fee2e2; color: #b91c1c; }
+        
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: var(--pico-border-radius);
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+        }
+        .alert-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .alert-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+        .alert-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .small-btn {
+            padding: 0.35rem 0.8rem;
+            font-size: 0.82rem;
+            margin-bottom: 0;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table-responsive table {
+            margin-bottom: 0.5rem;
+        }
+        .table-responsive th, .table-responsive td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            margin-bottom: 0;
+            padding: 1.25rem;
+            text-align: center;
+        }
+        .stat-card h3 {
+            margin-bottom: 0.25rem;
+            font-size: 1.75rem;
+        }
+        .stat-card p {
+            margin-bottom: 0;
+            color: var(--pico-muted-color);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--pico-muted-color);
+        }
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: flex-end;
+            margin-bottom: 1.25rem;
+        }
+        .filter-bar > div {
+            flex: 1 1 180px;
+        }
+        .filter-bar label {
+            margin-bottom: 0.25rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator, .htmx-request.htmx-indicator {
+            display: inline-block;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header>
+        <nav class="container">
+            <ul>
+                <li>
+                    <strong>
+                        <a href="{% if user %}/dashboard{% else %}/login{% endif %}" class="brand-link">
+                            Ledger<span style="color: var(--pico-primary);">One</span>
+                        </a>
+                    </strong>
+                </li>
+            </ul>
+            <ul>
+                {% if user %}
+                    <li><a href="/dashboard" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>Dashboard</a></li>
+                    <li><a href="/expenses" {% if active_page == 'expenses' %}aria-current="page"{% endif %}>Expenses</a></li>
+                    {% if user.role != 'Finance' %}
+                        <li><a href="/expenses/new" {% if active_page == 'new_expense' %}aria-current="page"{% endif %}>+ New Expense</a></li>
+                    {% endif %}
+                    {% if user.role == 'Manager' %}
+                        <li><a href="/approvals" {% if active_page == 'approvals' %}aria-current="page"{% endif %}>Approvals</a></li>
+                    {% endif %}
+                    <li>
+                        <span class="user-pill">
+                            <span>{{ user.username }}</span>
+                            <span class="badge badge-{{ user.role.lower() }}">{{ user.role }}</span>
+                        </span>
+                    </li>
+                    <li><a href="/logout" role="button" class="outline secondary small-btn">Logout</a></li>
+                {% else %}
+                    <li><a href="/login" {% if active_page == 'login' %}aria-current="page"{% endif %}>Sign In</a></li>
+                    <li><a href="/register" role="button" class="small-btn">Sign Up</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="container" style="text-align: center; margin-top: 3rem; padding-bottom: 2rem; color: var(--pico-muted-color); font-size: 0.8rem;">
+        <p>LedgerOne &bull; Corporate Expense Management System</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

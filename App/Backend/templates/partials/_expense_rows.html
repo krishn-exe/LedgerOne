@@ -1,0 +1,119 @@
+<div id="expense-table-container">
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Amount</th>
+                    {% if user.role != 'Employee' %}
+                        <th scope="col">Submitted By</th>
+                    {% endif %}
+                    <th scope="col">Status</th>
+                    <th scope="col">Details</th>
+                    <th scope="col" style="text-align: right;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if expenses and expenses|length > 0 %}
+                    {% for exp in expenses %}
+                        <tr id="expense-row-{{ exp.id }}">
+                            <td><strong>#{{ exp.id }}</strong></td>
+                            <td style="font-size: 0.85rem; color: var(--pico-muted-color);">
+                                {% if exp.created_at %}
+                                    {{ exp.created_at.strftime('%Y-%m-%d %H:%M') if exp.created_at.strftime is defined else exp.created_at }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ exp.title }}</strong></td>
+                            <td><small>{{ exp.category }}</small></td>
+                            <td>
+                                <strong>{{ "%.2f"|format(exp.amount) }}</strong>
+                                <small style="color: var(--pico-muted-color);">{{ exp.currency or 'INR' }}</small>
+                            </td>
+                            {% if user.role != 'Employee' %}
+                                <td>
+                                    <span style="font-size: 0.85rem;">{{ exp.username or ('User #' ~ exp.user_id) }}</span>
+                                </td>
+                            {% endif %}
+                            <td>
+                                <span class="badge badge-{{ exp.status }}">
+                                    {{ exp.status }}
+                                </span>
+                            </td>
+                            <td style="font-size: 0.85rem; max-width: 250px; overflow: hidden; text-overflow: ellipsis;">
+                                {% if exp.status == 'rejected' and exp.rejection_reason %}
+                                    <span style="color: #b91c1c;"><strong>Reason:</strong> {{ exp.rejection_reason }}</span>
+                                {% elif exp.notes %}
+                                    <span style="color: var(--pico-muted-color);">{{ exp.notes }}</span>
+                                {% else %}
+                                    <span style="color: var(--pico-muted-color);">-</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                {% if exp.status == 'rejected' and exp.user_id == user.id %}
+                                    <button 
+                                        hx-post="/expenses/{{ exp.id }}/reopen" 
+                                        hx-target="#expense-row-{{ exp.id }}" 
+                                        hx-swap="outerHTML" 
+                                        class="outline small-btn" 
+                                        title="Resubmit this rejected expense">
+                                        Reopen
+                                    </button>
+                                {% elif exp.status == 'submitted' and user.role == 'Manager' and exp.user_id != user.id %}
+                                    <a href="/approvals" class="small-btn outline" role="button">Review</a>
+                                {% else %}
+                                    <span style="color: var(--pico-muted-color); font-size: 0.8rem;">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{% if user.role != 'Employee' %}9{% else %}8{% endif %}" class="empty-state">
+                            <p style="margin-bottom: 0.5rem; font-size: 1.1rem;">No expenses found</p>
+                            <small>Try adjusting your filters or create a new expense.</small>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination & Summary Footer -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; font-size: 0.85rem; color: var(--pico-muted-color);">
+        <div>
+            Showing {{ expenses|length }} of {{ total }} records (Page {{ page }} of {{ total_pages }})
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            {% if page > 1 %}
+                <button 
+                    hx-get="/expenses?status={{ current_status or '' }}&category={{ current_category or '' }}&page={{ page - 1 }}&limit={{ limit }}" 
+                    hx-target="#expense-table-container" 
+                    hx-swap="outerHTML"
+                    class="outline secondary small-btn">
+                    &larr; Prev
+                </button>
+            {% else %}
+                <button disabled class="outline secondary small-btn" style="opacity: 0.5;">&larr; Prev</button>
+            {% endif %}
+
+            <span>Page {{ page }} / {{ total_pages }}</span>
+
+            {% if page < total_pages %}
+                <button 
+                    hx-get="/expenses?status={{ current_status or '' }}&category={{ current_category or '' }}&page={{ page + 1 }}&limit={{ limit }}" 
+                    hx-target="#expense-table-container" 
+                    hx-swap="outerHTML"
+                    class="outline secondary small-btn">
+                    Next &rarr;
+                </button>
+            {% else %}
+                <button disabled class="outline secondary small-btn" style="opacity: 0.5;">Next &rarr;</button>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,87 @@
+<tr id="approval-row-{{ exp.id }}">
+    <td><strong>#{{ exp.id }}</strong></td>
+    <td style="font-size: 0.85rem; color: var(--pico-muted-color);">
+        {% if exp.created_at %}
+            {{ exp.created_at.strftime('%Y-%m-%d %H:%M') if exp.created_at.strftime is defined else exp.created_at }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+    <td>
+        <strong>{{ exp.username or ('User #' ~ exp.user_id) }}</strong>
+    </td>
+    <td><strong>{{ exp.title }}</strong></td>
+    <td><small>{{ exp.category }}</small></td>
+    <td>
+        <strong>{{ "%.2f"|format(exp.amount) }}</strong>
+        <small style="color: var(--pico-muted-color);">{{ exp.currency or 'INR' }}</small>
+    </td>
+    <td style="font-size: 0.85rem; max-width: 200px;">
+        {% if exp.notes %}
+            {{ exp.notes }}
+        {% else %}
+            <span style="color: var(--pico-muted-color);">-</span>
+        {% endif %}
+    </td>
+    <td>
+        <span class="badge badge-{{ exp.status }}">
+            {{ exp.status }}
+        </span>
+        {% if exp.status == 'rejected' and exp.rejection_reason %}
+            <br><small style="color: #b91c1c; font-size: 0.75rem;"><strong>Reason:</strong> {{ exp.rejection_reason }}</small>
+        {% endif %}
+    </td>
+    <td style="text-align: right;">
+        {% if exp.status == 'submitted' %}
+            <div style="display: inline-flex; align-items: center; gap: 0.4rem; justify-content: flex-end;">
+                <!-- Approve Button -->
+                <button 
+                    hx-post="/approvals/{{ exp.id }}/approve" 
+                    hx-target="#approval-row-{{ exp.id }}" 
+                    hx-swap="outerHTML" 
+                    hx-confirm="Approve expense #{{ exp.id }} ({{ exp.title }})?"
+                    class="small-btn"
+                    style="background-color: #15803d; border-color: #15803d; color: white;">
+                    Approve
+                </button>
+
+                <!-- Reject Inline Dropdown / Form -->
+                <details style="position: relative; display: inline-block; margin-bottom: 0;">
+                    <summary role="button" class="outline contrast small-btn" style="margin-bottom: 0;">
+                        Reject
+                    </summary>
+                    <div style="position: absolute; right: 0; top: 100%; z-index: 20; background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: 0.75rem; width: 260px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-top: 0.25rem;">
+                        <form 
+                            hx-post="/approvals/{{ exp.id }}/reject" 
+                            hx-target="#approval-row-{{ exp.id }}" 
+                            hx-swap="outerHTML" 
+                            style="margin-bottom: 0;">
+                            <label style="font-size: 0.78rem; font-weight: 600; text-align: left; margin-bottom: 0.25rem;">
+                                Reason (min 5 chars):
+                            </label>
+                            <input 
+                                type="text" 
+                                name="rejection_reason" 
+                                placeholder="e.g. Missing receipt" 
+                                minlength="5" 
+                                required 
+                                style="font-size: 0.8rem; padding: 0.35rem 0.5rem; margin-bottom: 0.5rem; width: 100%;">
+                            <button 
+                                type="submit" 
+                                class="small-btn" 
+                                style="background-color: #b91c1c; border-color: #b91c1c; color: white; width: 100%;">
+                                Confirm Rejection
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        {% elif exp.status == 'approved' %}
+            <span style="color: #15803d; font-size: 0.85rem; font-weight: 600;">&check; Approved</span>
+        {% elif exp.status == 'rejected' %}
+            <span style="color: #b91c1c; font-size: 0.85rem; font-weight: 600;">&times; Rejected</span>
+        {% else %}
+            <span style="color: var(--pico-muted-color); font-size: 0.85rem;">Processed</span>
+        {% endif %}
+    </td>
+</tr>

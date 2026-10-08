@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Expenses - LedgerOne{% endblock %}
+
+{% block content %}
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+        <div>
+            <h2 style="margin-bottom: 0.25rem;">Expenses</h2>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem; margin-bottom: 0;">
+                {% if user.role == 'Employee' %}
+                    Your submitted expenses and current review status
+                {% else %}
+                    Organization-wide expense records ({{ user.role }} View)
+                {% endif %}
+            </p>
+        </div>
+        {% if user.role != 'Finance' %}
+            <div>
+                <a href="/expenses/new" role="button" class="small-btn">+ New Expense</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Filter Bar with HTMX reactive update -->
+    <article style="padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+        <form id="filter-form" 
+              hx-get="/expenses" 
+              hx-target="#expense-table-container" 
+              hx-swap="outerHTML" 
+              hx-push-url="true" 
+              style="margin-bottom: 0;">
+            <div class="filter-bar">
+                <div>
+                    <label for="status">Filter by Status</label>
+                    <select id="status" name="status" hx-trigger="change" style="margin-bottom: 0;">
+                        <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
+                        <option value="submitted" {% if current_status == 'submitted' %}selected{% endif %}>Submitted (Pending)</option>
+                        <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved</option>
+                        <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>Rejected</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="category">Filter by Category</label>
+                    <select id="category" name="category" hx-trigger="change" style="margin-bottom: 0;">
+                        <option value="" {% if not current_category %}selected{% endif %}>All Categories</option>
+                        <option value="Meals" {% if current_category == 'Meals' %}selected{% endif %}>Meals</option>
+                        <option value="Travel" {% if current_category == 'Travel' %}selected{% endif %}>Travel</option>
+                        <option value="Software" {% if current_category == 'Software' %}selected{% endif %}>Software</option>
+                        <option value="Equipment" {% if current_category == 'Equipment' %}selected{% endif %}>Equipment</option>
+                        <option value="Other" {% if current_category == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div style="flex: 0 0 auto; display: flex; align-items: flex-end; gap: 0.5rem;">
+                    <a href="/expenses" role="button" class="outline secondary small-btn" style="margin-bottom: 0;">Reset</a>
+                    <span class="htmx-indicator" style="font-size: 0.85rem; color: var(--pico-muted-color);">Loading...</span>
+                </div>
+            </div>
+        </form>
+    </article>
+
+    <!-- Expenses Table Container (Partial) -->
+    {% include "partials/_expense_rows.html" %}
+</div>
+{% endblock %}
