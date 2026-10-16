@@ -85,6 +85,17 @@ cd App/Backend
 uvicorn main:app --reload
 ```
 
+#### 8. Run with Docker
+
+Set `MYSQL_PASSWORD` in the environment (or in a root `.env` file), then start
+the application and MySQL database:
+
+```bash
+docker compose up --build
+```
+
+The application is available at `http://localhost:8000`.
+
 ## Web UI Pages & URLs
 
 Once the server is running (`http://localhost:8000`):
