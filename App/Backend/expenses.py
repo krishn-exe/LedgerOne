@@ -147,6 +147,9 @@ def reopen_expense(expense_id: int, action: SessionRequest):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid session")
 
+    if user["role"] == "Finance":
+        raise HTTPException(status_code=403, detail="Not Permitted to perform this action")
+
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:

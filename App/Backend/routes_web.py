@@ -560,6 +560,9 @@ def reopen_expense_action(
     request: Request,
     user: dict = Depends(get_current_user),
 ):
+    if user["role"] == "Finance":
+        raise ForbiddenError("Finance accounts are not permitted to perform this action.")
+
     session_id = request.cookies.get("session_id")
     try:
         reopen_expense(expense_id, SessionRequest(session_id=session_id))
@@ -584,14 +587,10 @@ def reopen_expense_action(
     # Re-render single expense row
     return templates.TemplateResponse(
         request=request,
-        name="partials/_expense_rows.html",
+        name="partials/_expense_row.html",
         context={
             "user": user,
-            "expenses": [updated_exp],
-            "total": 1,
-            "page": 1,
-            "limit": 1,
-            "total_pages": 1,
+            "exp": updated_exp,
         },
     )
 
