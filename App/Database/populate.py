@@ -1,6 +1,7 @@
 import mysql.connector
 import os
 import random
+import hashlib
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -22,18 +23,17 @@ cursor.execute("TRUNCATE TABLE expenses")
 cursor.execute("TRUNCATE TABLE users")
 cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
 
-roles = (
-    ['Employee'] * 6 + 
-    ['Manager'] * 3 + 
-    ['Finance'] * 1
-)
+accounts = [
+    *(("employee_" + str(i), "Employee") for i in range(1, 7)),
+    *(("manager_" + str(i), "Manager") for i in range(1, 4)),
+    ("finance_1", "Finance"),
+    ("manager_7", "Manager"),
+    ("finance_10", "Finance"),
+]
 
 user_ids = []
 
-import hashlib
-
-for i, role in enumerate(roles):
-    username = f"{role.lower()}_{i+1}"
+for username, role in accounts:
     salt = os.urandom(16)
     pwd_hash = hashlib.pbkdf2_hmac('sha256', 'password123'.encode('utf-8'), salt, 100000).hex()
     salt_hex = salt.hex()
@@ -41,6 +41,10 @@ for i, role in enumerate(roles):
     cursor.execute("""
         INSERT INTO users (username, password_hash, salt, role)
         VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            password_hash = VALUES(password_hash),
+            salt = VALUES(salt),
+            role = VALUES(role)
     """, (username, pwd_hash, salt_hex, role))
     
     user_ids.append(cursor.lastrowid)
@@ -97,26 +101,6 @@ for user_id in user_ids:
             random_date
         ))
         total_expenses += 1
-demo_accounts = [
-    ("employee_1", "Employee"),
-    ("manager_7", "Manager"),
-    ("finance_10", "Finance"),
-]
-
-for username, role in demo_accounts:
-    salt = os.urandom(16)
-    pwd_hash = hashlib.pbkdf2_hmac(
-        "sha256", "password123".encode("utf-8"), salt, 100000
-    ).hex()
-
-    cursor.execute("""
-        INSERT INTO users (username, password_hash, salt, role)
-        VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            password_hash = VALUES(password_hash),
-            salt = VALUES(salt),
-            role = VALUES(role)
-    """, (username, pwd_hash, salt.hex(), role))
 
 db.commit()
 cursor.close()
