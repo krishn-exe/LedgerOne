@@ -1,6 +1,7 @@
 services:
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-change-me}
     volumes:
@@ -13,9 +14,10 @@ services:
 
   app:
     build: .
+    restart: unless-stopped
     command: ["sh", "-c", "python ../Database/setup.py && python ../Database/populate.py && exec uvicorn main:app --host 0.0.0.0 --port 8000"]
-    ports:
-      - "8001:8000"
+    expose:
+      - "8000"
     environment:
       MYSQL_HOST: mysql
       MYSQL_USER: root
@@ -24,5 +26,20 @@ services:
       mysql:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
 volumes:
   mysql_data:
+  caddy_data:
+  caddy_config:
