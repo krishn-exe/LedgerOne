@@ -97,6 +97,26 @@ for user_id in user_ids:
             random_date
         ))
         total_expenses += 1
+demo_accounts = [
+    ("employee_1", "Employee"),
+    ("manager_7", "Manager"),
+    ("finance_10", "Finance"),
+]
+
+for username, role in demo_accounts:
+    salt = os.urandom(16)
+    pwd_hash = hashlib.pbkdf2_hmac(
+        "sha256", "password123".encode("utf-8"), salt, 100000
+    ).hex()
+
+    cursor.execute("""
+        INSERT INTO users (username, password_hash, salt, role)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            password_hash = VALUES(password_hash),
+            salt = VALUES(salt),
+            role = VALUES(role)
+    """, (username, pwd_hash, salt.hex(), role))
 
 db.commit()
 cursor.close()
