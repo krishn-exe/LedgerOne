@@ -45,8 +45,8 @@
                 <button 
                     hx-get="/expenses?status={{ current_status or '' }}&category={{ current_category or '' }}&page={{ page - 1 }}&limit={{ limit }}" 
                     hx-target="#expense-table-container" 
-                    hx-include="#filter-form"
                     hx-swap="outerHTML"
+                    hx-push-url="true"
                     class="outline secondary small-btn">
                     &larr; Prev
                 </button>
@@ -60,8 +60,8 @@
                 <button 
                     hx-get="/expenses?status={{ current_status or '' }}&category={{ current_category or '' }}&page={{ page + 1 }}&limit={{ limit }}" 
                     hx-target="#expense-table-container" 
-                    hx-include="#filter-form"
                     hx-swap="outerHTML"
+                    hx-push-url="true"
                     class="outline secondary small-btn">
                     Next &rarr;
                 </button>

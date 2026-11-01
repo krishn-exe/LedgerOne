@@ -6,8 +6,9 @@
     <title>{% block title %}LedgerOne - Expense Management{% endblock %}</title>
     <!-- Pico CSS via CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <!-- HTMX via CDN -->
+    <!-- HTMX via CDN with local fallback -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script>window.htmx || document.write('<script src="/static/js/htmx.min.js"><\/script>')</script>
     <style>
         :root {
             --pico-font-size: 95%;

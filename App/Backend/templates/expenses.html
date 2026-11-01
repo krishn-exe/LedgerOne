@@ -28,12 +28,13 @@
               hx-get="/expenses" 
               hx-target="#expense-table-container" 
               hx-swap="outerHTML" 
+              hx-trigger="change, submit"
               hx-push-url="true" 
               style="margin-bottom: 0;">
             <div class="filter-bar">
                 <div>
                     <label for="status">Filter by Status</label>
-                    <select id="status" name="status" hx-trigger="change" style="margin-bottom: 0;">
+                    <select id="status" name="status" style="margin-bottom: 0;" onchange="if (!window.htmx) this.form.submit();">
                         <option value="" {% if not current_status %}selected{% endif %}>All Statuses</option>
                         <option value="submitted" {% if current_status == 'submitted' %}selected{% endif %}>Submitted (Pending)</option>
                         <option value="approved" {% if current_status == 'approved' %}selected{% endif %}>Approved</option>
@@ -42,7 +43,7 @@
                 </div>
                 <div>
                     <label for="category">Filter by Category</label>
-                    <select id="category" name="category" hx-trigger="change" style="margin-bottom: 0;">
+                    <select id="category" name="category" style="margin-bottom: 0;" onchange="if (!window.htmx) this.form.submit();">
                         <option value="" {% if not current_category %}selected{% endif %}>All Categories</option>
                         <option value="Meals" {% if current_category == 'Meals' %}selected{% endif %}>Meals</option>
                         <option value="Travel" {% if current_category == 'Travel' %}selected{% endif %}>Travel</option>
